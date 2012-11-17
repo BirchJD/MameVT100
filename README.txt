@@ -48,7 +48,7 @@ cd ~
 nano .bash_profile
 modprobe snd-bcm2835
 cd /root/.xmame/
-./MameVT100 "|correct|"
+./MameVT100 /root/.xmame/roms/ "|correct|"
 
 Then press ^O ENTER ^X, where ^ means hold down the CTRL key while 
 pressing the next key.
@@ -57,11 +57,11 @@ This will show a menu displaying only valid ROMs which are present and valid.
 
 Other options are:
 Display all ROMs whatever their status.
-./MameVT100 "|correct|incorrect|not found|"
+./MameVT100 /root/.xmame/roms/ "|correct|incorrect|not found|"
 
 Display all ROMs present if they are valid or not.
-./MameVT100 "|correct|incorrect|"
+./MameVT100 /root/.xmame/roms/ "|correct|incorrect|"
 
 Display invalid ROMs (ROMs which are missing or invalid).
-./MameVT100 "|incorrect|not found|"
+./MameVT100 /root/.xmame/roms/ "|incorrect|not found|"
 
