@@ -65,15 +65,16 @@ int main(int argc, char* argv[])
 
 	if (argc != ARG_COUNT)
 	{
-		printf("Copyright Jason Birch   2012-11-15   V1.00\n");
-		printf("%s \"[FILTER]\"\n", argv[ARG_EXE]);
+		printf("Copyright Jason Birch   2012-11-17   V1.01\n");
+		printf("%s [ROM_PATH] \"[FILTER]\"\n", argv[ARG_EXE]);
 		printf("Where:\n");
+		printf("[ROM_PATH]         - /root/.xmame/roms/\n");
 		printf("\"[FILTER]\"       - Which ROM statuses to display seperated by '|'\n");
 		printf("\n");
 		printf("Examples:\n");
-		printf("%s \"|correct|\"\n", argv[ARG_EXE]);
-		printf("%s \"|correct|incorrect|\"\n", argv[ARG_EXE]);
-		printf("%s \"|correct|incorrect|not found|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/roms/ \"|correct|best available|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/roms/ \"|correct|best available|incorrect|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/roms/ \"|correct|best available|incorrect|not found|\"\n", argv[ARG_EXE]);
 	}
 	else
 	{
@@ -98,7 +99,7 @@ int main(int argc, char* argv[])
   /*******************************/
  /* Generate and load ROM data. */
 /*******************************/
-		GetRomInfo(ROM, ROM_Name, ROM_Status, ROM_Filtered, argv[ARG_FILTER]);
+		GetRomInfo(ROM, ROM_Name, ROM_Status, ROM_Filtered, argv[ARG_FILTER], argv[ARG_ROM_PATH]);
 
   /******************************/
  /* Clear the terminal window. */
@@ -154,7 +155,7 @@ int main(int argc, char* argv[])
 /***********************/
 			if (Buffer[0] == '1')
 			{
-				sprintf(Execute, "./xmame.SDL -ef 2 -rp roms %s", ROM[ROM_Filtered[Index]]);
+				sprintf(Execute, "./xmame.SDL -ef 2 -afs -fsr 0 -rp %s -fullscreen %s", argv[ARG_ROM_PATH], ROM[ROM_Filtered[Index]]);
 				system(Execute);
 				Refresh = TRUE;
 			}
@@ -281,6 +282,13 @@ void UpdateDisplay(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filt
 			printf(VT100_SET_ATTRIB, VT100_ATTRIB_FG_WHITE);
 			printf(VT100_SET_ATTRIB, VT100_ATTRIB_BG_GREEN);
 		}
+		else if (!strcmp(ROM_Status[ROM_Filtered[Count]], "best available"))
+		{
+			Display = TRUE;
+			printf(VT100_SET_ATTRIB, VT100_ATTRIB_BOLD);
+			printf(VT100_SET_ATTRIB, VT100_ATTRIB_FG_BLACK);
+			printf(VT100_SET_ATTRIB, VT100_ATTRIB_BG_GREEN);
+		}
 		else if (!strcmp(ROM_Status[ROM_Filtered[Count]], "incorrect"))
 		{
 			Display = TRUE;
@@ -365,7 +373,7 @@ void DisplayError(char* Error)
 }
 
 
-void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter)
+void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* RomPath)
 {
 	FILE* File;
 	int Index;
@@ -379,8 +387,10 @@ void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtere
   /***************************************************************/
  /* Generate information about the Mame ROMs which are present. */
 /***************************************************************/
-	system("./xmame.SDL -rp roms -srtn -lf > MameGameList.txt 2>/dev/null");
-	system("./xmame.SDL -rp roms -srtn -vrs > MameGameValid.txt 2>/dev/null");
+   sprintf(Buffer, "./xmame.SDL -rp %s -srtn -lf > MameGameList.txt 2>/dev/null", RomPath);
+	system(Buffer);
+   sprintf(Buffer, "./xmame.SDL -rp %s -srtn -vrs > MameGameValid.txt 2>/dev/null", RomPath);
+	system(Buffer);
 
   /*******************************************/
  /* Read the game data for use in the menu. */
@@ -443,6 +453,13 @@ void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtere
 				Size = Pos1 - Buffer;
 				strncpy(Temp, Buffer, Size);
 				Temp[Size] = '\0';
+
+  /***************************************************************************/
+ /* XMame has a bug which outputs a fault in the log, this is a workaround. */
+/***************************************************************************/
+				if (ROM[Index + 1] && !strcmp(Temp, ROM[Index + 1]))
+               ++Index;
+
 				if (ROM[Index] && !strcmp(Temp, ROM[Index]))
 				{
   /***********************/

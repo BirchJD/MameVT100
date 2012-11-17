@@ -20,9 +20,10 @@
 #define __MameVT100_H
 
 
-#define ARG_COUNT		2
+#define ARG_COUNT		3
 #define ARG_EXE			0
-#define ARG_FILTER		1
+#define ARG_ROM_PATH		1
+#define ARG_FILTER		2
 
 #define TRUE			-1
 #define FALSE			0
@@ -37,7 +38,7 @@
 void Timer(int signum);
 void DisplayError(char* Error);
 int GetKeys(char* Buffer, char FromChar, char ToChar);
-void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter);
+void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* RomPath);
 void UpdateDisplay(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, int Cols, int Rows, int Offset, int Index);
 
 
