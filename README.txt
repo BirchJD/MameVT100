@@ -47,6 +47,7 @@ command prompt:
 cd ~
 nano .bash_profile
 modprobe snd-bcm2835
+cd /root/.xmame/
 ./MameVT100 "|correct|"
 
 Then press ^O ENTER ^X, where ^ means hold down the CTRL key while 
