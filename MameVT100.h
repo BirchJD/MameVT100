@@ -20,25 +20,30 @@
 #define __MameVT100_H
 
 
-#define ARG_COUNT		3
+#define ARG_COUNT		   5
 #define ARG_EXE			0
-#define ARG_ROM_PATH		1
-#define ARG_FILTER		2
+#define ARG_MAME_PATH	1
+#define ARG_ROM_PATH		2
+#define ARG_FILTER		3
+#define ARG_RESCAN		4
 
-#define TRUE			-1
-#define FALSE			0
-#define BUFF_SIZE		1024
-#define MAX_ROMS		8192
+
+#define PERIOD          150000
+#define TRUE			   -1
+#define FALSE			   0
+#define BUFF_SIZE		   1024
+#define MAX_ROMS		   8192
 #define BORDER_TOP		1
 #define BORDER_LEFT		2
 #define ITEM_WIDTH		26
 #define ITEM_HEIGHT		2
 
 
+void ConfigGPIO();
 void Timer(int signum);
 void DisplayError(char* Error);
 int GetKeys(char* Buffer, char FromChar, char ToChar);
-void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* RomPath);
+void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* MamePath, char* RomPath, int UpdateFilter);
 void UpdateDisplay(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, int Cols, int Rows, int Offset, int Index);
 
 

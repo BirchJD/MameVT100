@@ -42,8 +42,45 @@
 #include "MameVT100.h"
 
 
+int GPIO_Pin[] = {
+                       9,
+                      22,
+                       4,
+                      18,
+                       8,
+                      11,
+                      10,
+                       7,
+                      17,
+                       2,
+                      15,
+                      27,
+                       3,
+                      14,
+                       0,
+                 };
+int GPIO_Key[] = {
+                      '1',
+                      '2', 
+                      '5',
+                      0x1B,
+                      0x00414F1B,
+                      0x00444F1B,
+                      0x00434F1B,
+                      0x00424F1B,
+                      -1,
+                      -1,
+                      -1,
+                      -1,
+                      -1,
+                      -1,
+                      0,
+                 };
+
+
 int main(int argc, char* argv[])
 {
+   FILE* File;
 	int Count;
 	int Size;
 	int Index;
@@ -63,21 +100,31 @@ int main(int argc, char* argv[])
 	struct termios NewTermIOs;
 	struct itimerval NewTimer;
 
-	if (argc != ARG_COUNT)
+
+	if (argc != ARG_COUNT && argc != ARG_COUNT - 1)
 	{
-		printf("Copyright Jason Birch   2012-11-17   V1.01\n");
-		printf("%s [ROM_PATH] \"[FILTER]\"\n", argv[ARG_EXE]);
+		printf("Copyright Jason Birch   2012-11-20   V1.02\n");
+		printf("%s [ROM_PATH] \"[FILTER]\" <RESCAN>\n", argv[ARG_EXE]);
 		printf("Where:\n");
+		printf("[MAME_PATH]        - /root/.xmame/\n");
 		printf("[ROM_PATH]         - /root/.xmame/roms/\n");
-		printf("\"[FILTER]\"       - Which ROM statuses to display seperated by '|'\n");
+		printf("\"[FILTER]\"         - Which ROM statuses to display seperated by '|'\n");
+      printf("<RESCAN>           - Checks for new, updated and removed ROM files.\n");
+      printf("                     If not specified the menu will open much faster.\n");
 		printf("\n");
 		printf("Examples:\n");
-		printf("%s /root/.xmame/roms/ \"|correct|best available|\"\n", argv[ARG_EXE]);
-		printf("%s /root/.xmame/roms/ \"|correct|best available|incorrect|\"\n", argv[ARG_EXE]);
-		printf("%s /root/.xmame/roms/ \"|correct|best available|incorrect|not found|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/ /root/.xmame/roms/ \"|correct|best available|\" RESCAN\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/ /root/.xmame/roms/ \"|correct|best available|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/ /root/.xmame/roms/ \"|correct|best available|incorrect|\"\n", argv[ARG_EXE]);
+		printf("%s /root/.xmame/ /root/.xmame/roms/ \"|correct|best available|incorrect|not found|\"\n", argv[ARG_EXE]);
 	}
 	else
 	{
+  /******************************************/
+ /* Configure required GPIO pins to input. */
+/******************************************/
+      ConfigGPIO();
+
   /****************/
  /* CooCooCaChoo */
 /****************/
@@ -99,7 +146,7 @@ int main(int argc, char* argv[])
   /*******************************/
  /* Generate and load ROM data. */
 /*******************************/
-		GetRomInfo(ROM, ROM_Name, ROM_Status, ROM_Filtered, argv[ARG_FILTER], argv[ARG_ROM_PATH]);
+		GetRomInfo(ROM, ROM_Name, ROM_Status, ROM_Filtered, argv[ARG_FILTER], argv[ARG_MAME_PATH], argv[ARG_ROM_PATH], (argc == ARG_COUNT));
 
   /******************************/
  /* Clear the terminal window. */
@@ -115,18 +162,30 @@ int main(int argc, char* argv[])
  /* Generate a frame timer. */
 /***************************/
 		signal(SIGALRM, Timer);
-		NewTimer.it_interval.tv_usec = 50000;
+		NewTimer.it_interval.tv_usec = PERIOD;
 		NewTimer.it_interval.tv_sec = 0;
-		NewTimer.it_value.tv_usec = 50000;
+		NewTimer.it_value.tv_usec = PERIOD;
 		NewTimer.it_value.tv_sec = 0;
 		if (setitimer(ITIMER_REAL, &NewTimer, NULL))
 			DisplayError("Failed to start timer.");
 
+  /************************/
+ /* Reload last session. */
+/************************/
+		Index = 0;
+		Offset = 0;
+      if ((File = fopen("MameVT100.dat", "r")))
+      {
+         fgets(Buffer, BUFF_SIZE, File);
+         Index = atoi(Buffer);
+         fgets(Buffer, BUFF_SIZE, File);
+         Offset = atoi(Buffer);
+         fclose(File);
+      }
+
   /****************************/
  /* Handle user key presses. */
 /****************************/
-		Index = 0;
-		Offset = 0;
 		Refresh = TRUE;
 		do
 		{
@@ -155,7 +214,18 @@ int main(int argc, char* argv[])
 /***********************/
 			if (Buffer[0] == '1')
 			{
-				sprintf(Execute, "./xmame.SDL -ef 2 -afs -fsr 0 -rp %s -fullscreen %s", argv[ARG_ROM_PATH], ROM[ROM_Filtered[Index]]);
+  /*********************/
+ /* Clear background. */
+/*********************/
+         	printf(VT100_SET_ATTRIB, VT100_ATTRIB_FG_WHITE);
+         	printf(VT100_SET_ATTRIB, VT100_ATTRIB_BG_BLACK);
+	         printf(VT100_ERASE_DISPLAY);
+            printf("\n");
+
+  /**************/
+ /* Start ROM. */
+/**************/
+				sprintf(Execute, "%sxmame.SDL -jt 6 -ef 2 -afs -fsr 0 -rp %s -skip_disclaimer -skip_gameinfo -fullscreen %s", argv[ARG_MAME_PATH], argv[ARG_ROM_PATH], ROM[ROM_Filtered[Index]]);
 				system(Execute);
 				Refresh = TRUE;
 			}
@@ -212,7 +282,17 @@ int main(int argc, char* argv[])
   /*****************************************/
  /* Exit application when '0' is pressed. */
 /*****************************************/
-		} while (Buffer[0] != '0');
+		} while (Buffer[0] != '2');
+
+  /*****************/
+ /* Save session. */
+/*****************/
+      if ((File = fopen("MameVT100.dat", "w")))
+      {
+         fprintf(File, "%u\n", Index);
+         fprintf(File, "%u\n", Offset);
+         fclose(File);
+      }
 
   /*******************/
  /* Stop the timer. */
@@ -373,7 +453,7 @@ void DisplayError(char* Error)
 }
 
 
-void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* RomPath)
+void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtered, char* Filter, char* MamePath, char* RomPath, int UpdateFilter)
 {
 	FILE* File;
 	int Index;
@@ -387,10 +467,13 @@ void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtere
   /***************************************************************/
  /* Generate information about the Mame ROMs which are present. */
 /***************************************************************/
-   sprintf(Buffer, "./xmame.SDL -rp %s -srtn -lf > MameGameList.txt 2>/dev/null", RomPath);
-	system(Buffer);
-   sprintf(Buffer, "./xmame.SDL -rp %s -srtn -vrs > MameGameValid.txt 2>/dev/null", RomPath);
-	system(Buffer);
+   if (UpdateFilter)
+   {
+      sprintf(Buffer, "%sxmame.SDL -rp %s -srtn -lf > MameGameList.txt 2>/dev/null", MamePath, RomPath);
+	   system(Buffer);
+      sprintf(Buffer, "%sxmame.SDL -rp %s -srtn -vrs > MameGameValid.txt 2>/dev/null", MamePath, RomPath);
+	   system(Buffer);
+   }
 
   /*******************************************/
  /* Read the game data for use in the menu. */
@@ -488,10 +571,43 @@ void GetRomInfo(char** ROM, char** ROM_Name, char** ROM_Status, int* ROM_Filtere
 }
 
 
+void ConfigGPIO()
+{
+   FILE* File;
+   int Index;
+   char Buffer[BUFF_SIZE + 1];
+
+   Index = 0;
+   while (GPIO_Pin[Index] != 0)
+   {
+      sprintf(Buffer, "/sys/class/gpio/export");
+      if (!(File = fopen(Buffer, "w")))
+         printf("Failed to open file: %s\n", Buffer);
+      {
+         fprintf(File, "%u", GPIO_Pin[Index]);
+         fclose(File);
+
+         sprintf(Buffer, "/sys/class/gpio/gpio%u/direction", GPIO_Pin[Index]);
+         if (!(File = fopen(Buffer, "w")))
+            printf("Failed to open file: %s\n", Buffer);
+         {
+            fprintf(File, "in");
+            fclose(File);
+         }
+      }
+
+      ++Index;
+   };   
+}
+
+
 int GetKeys(char* Buffer, char FromChar, char ToChar)
 {
+   FILE* File;
+   int Index;
 	int Count;
 	char Char;
+   char Temp[BUFF_SIZE + 1];
 
 	Count = 0;
 	if (FromChar != '\0')
@@ -509,6 +625,22 @@ int GetKeys(char* Buffer, char FromChar, char ToChar)
 			Buffer[Count++] = Char;
 	} while ((ToChar == '\0' && Char != 255) || (ToChar != '\0' && Char != ToChar));
 	Buffer[Count] = '\0';
+
+   Index = 0;
+   while (GPIO_Pin[Index] != 0)
+   {
+      sprintf(Temp, "/sys/class/gpio/gpio%u/value", GPIO_Pin[Index]);
+      if ((File = fopen(Temp, "r")))
+      {
+         Char = fgetc(File);
+         fclose(File);
+
+         if (Char == '0')
+            *((int*)&(Buffer[Count])) = GPIO_Key[Index];
+      }
+
+      ++Index;
+   };
 
 	return Count;
 }
